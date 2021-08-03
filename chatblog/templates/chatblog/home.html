@@ -1,0 +1,28 @@
+{% extends "chatblog/base.html" %}
+{% block content %}
+{% for post in posts %}
+<article class="media content-section">
+  <div class="media-body">
+    <div class="article-metadata">
+      <a class="mr-2" href="#">{{ post.author }}</a>
+      <small class="text-muted">{{ post.date_posted }}</small>
+    </div>
+    <h2><a class="article-title" href="{% url 'post-detail' post.id %}">{{ post.content }}</a></h2>
+    <!-- <p class="article-content" href={}>{{ post.content }}</p> -->
+  </div>
+</article>
+{% endfor %}
+{% endblock content %}
+
+{% block contents %}
+  <footer id="check">
+    <form action="/post/new/" method="POST">
+      {% csrf_token %}
+      <div class="form-floating" id="check" style="display: flex" >
+        <textarea class="form-control" name="content" placeholder="type a message" id="floatingTextarea"></textarea>
+        <button class="btn btn-outline-info" type="submit">Send</button>
+      </div>
+    </form>
+  </footer>
+{% endblock contents %}
+
