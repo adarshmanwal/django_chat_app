@@ -1,0 +1,128 @@
+{% extends "chatblog/base.html" %}
+{% block content %}
+<style>
+    .containers {
+        border: 2px solid #dedede;
+        background-color: #f1f1f1;
+        border-radius: 5px;
+        padding: 10px;
+        margin: 10px 0;
+      }
+      
+      .darkers {
+        border-color: #ccc;
+        background-color: #ddd;
+      }
+</style>
+<div id="display">
+    <!-- <div class="containers darkers">
+      <b>Tom</b><p>Hello Everyone, How Are You Guys Doing?</p>
+      <span class="time-left">20th, April 2021</span>
+    </div> -->
+    
+</div>
+    <!-- <textarea id="chat-log" disabled cols="0" rows="0"></textarea><br> -->
+    <form id="post-form" >
+        {% csrf_token %}
+        <input id="chat-message-input" name="message" type="text" size="100"><br>
+    </form>
+    <!-- <input id="chat-message-input" type="text" size="100"><br> -->
+    <!-- <input type="hidden" name="room_id" id="room_id" value="{{room_details.id}}"/> -->
+    <input id="chat-message-submit" type="button" value="Send">
+    {{ room_name|json_script:"room-name" }}
+    <script>
+        const roomName = JSON.parse(document.getElementById('room-name').textContent);
+        const chatSocket = new WebSocket(
+            'ws://'
+            + window.location.host
+            + '/ws/chat/'
+            + roomName
+            + '/'
+        );
+        chatSocket.onmessage = function(e) {
+            const data = JSON.parse(e.data);
+          //  document.querySelector('#chat-log').value += (data.message + '\n');
+
+            // Adding new message in view
+            var div = document.getElementById('display');
+            var temp="<div class='containers darkers'><p>Message by -> {{request.user.username}}</p> <p>"+data.message+"</p><span class='time-left'>"+new Date()+"</span></div>";
+            div.innerHTML += temp;
+        };
+        chatSocket.onclose = function(e) {
+            console.error('Chat socket closed unexpectedly');
+        };
+
+        function showMessage(message) {
+            var http = new XMLHttpRequest();
+            var url = '/chat/getMessages/'+roomName;
+            http.open('GET', url, true);
+
+            // Send the proper header information along with the request
+            http.setRequestHeader("X-CSRFToken", getCookie('csrftoken'));
+            http.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
+
+            http.onreadystatechange = function() {//Call a function when the state changes.
+                if(http.readyState == 4 && http.status == 200) {
+                    var messages = JSON.parse(http.responseText).messages;
+                    var div = document.getElementById('display');
+                    messages.forEach(message => {
+                        var temp="<div class='containers darkers'><p>"+message.value+"</p><span class='time-left'>"+message.date+"</span></div>";
+                        div.innerHTML += temp;
+                    });
+                }
+            }
+            http.send();
+        }
+        showMessage();
+
+
+        document.querySelector('#chat-message-input').focus();
+        document.querySelector('#chat-message-input').onkeyup = function(e) {
+            if (e.keyCode === 13) {  // enter, return
+                document.querySelector('#chat-message-submit').click();
+            }
+        };
+        document.querySelector('#chat-message-submit').onclick = function(e) {
+            const messageInputDom = document.querySelector('#chat-message-input');
+            const message = messageInputDom.value;
+            chatSocket.send(JSON.stringify({
+                'message': message
+            }));
+            messageInputDom.value = '';
+            saveMessage(message);
+        };
+
+        function saveMessage(message) {
+            var http = new XMLHttpRequest();
+            var url = '/chat/send/';
+            var params = 'message='+message+'&roomName='+roomName+'&username';
+            http.open('POST', url, true);
+
+            //Send the proper header information along with the request
+            http.setRequestHeader("X-CSRFToken", getCookie('csrftoken'));
+            http.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
+
+            http.onreadystatechange = function() {//Call a function when the state changes.
+                if(http.readyState == 4 && http.status == 200) {
+                }
+            }
+            http.send(params);
+        }
+
+        function getCookie(name) {
+            var cookieValue = null;
+            if (document.cookie && document.cookie != '') {
+                var cookies = document.cookie.split(';');
+                for (var i = 0; i < cookies.length; i++) {
+                    var cookie = jQuery.trim(cookies[i]);
+                    // Does this cookie string begin with the name we want?
+                    if (cookie.substring(0, name.length + 1) == (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+    </script>
+{% endblock content %}
